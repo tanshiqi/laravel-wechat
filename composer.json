@@ -1,0 +1,22 @@
+{
+    "name": "atan/wechat",
+    "keywords": ["laravel", "weixin", "wechat"],
+    "license": "MIT",
+    "description": "Wechat SDK for Laravel 4",
+    "authors": [
+        {
+            "name": "atan",
+            "email": "tanshiqi@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "illuminate/support": "4.2.*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Atan\\Wechat\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
