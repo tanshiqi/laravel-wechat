@@ -36,7 +36,25 @@
 
 把微信公众号的 'token', 'encodingaeskey', 'appid', 'appsecret' 改为对应的。
 
-##2、主要功能
+##2、使用
+
+
+```php
+// 获取用户列表
+Route::get('/users', function(){
+    return Wechat::getUserList();
+});
+
+// 回复文本消息
+Route::post('/', function(){
+    $weObj = new Atan\Wechat\Wechat();
+    $type = $weObj->getRev()->getRevType();
+    $weObj->text("hello, it's wechat")->reply();
+});
+```
+
+
+##3、主要功能
 
 - 接入验证 **（初级权限）**
 - 自动回复（文本、图片、语音、视频、音乐、图文） **（初级权限）**
@@ -60,7 +78,7 @@
 - 语义理解 **（服务号、认证权限）**
 - 获取微信服务器IP列表 **（初级权限）**
 
-##3、被动接口方法
+##4、被动接口方法
   
 * valid() 验证连接，被动接口处于加密模式时必须调用
 * getRev() 获取微信服务器发来信息(不返回结果)，被动接口必须调用
@@ -104,7 +122,7 @@
 * transfer_customer_service($customer_account = '') 转接多客服，如不指定客服可不提供参数，参数：指定客服的账号
 * reply() 将以上已经设置好的消息，回复给微信服务器
 
-##4、主动接口方法:
+##5、主动接口方法:
 
  *  checkAuth($appid,$appsecret,$token) 此处传入公众后台高级接口提供的appid和appsecret, 或者手动指定$token为access_token。函数将返回access_token操作令牌
  *  resetAuth($appid='') 删除验证数据
@@ -187,10 +205,10 @@
  *  setCardTestWhiteList($openid=array(),$user=array()) 设置卡券测试白名单
 
 
-##5、环境
+##6、环境
 PHP >= 5.4
 Laravel >= 4.2
 
-##6、License
+##7、License
 This is free software distributed under the terms of the MIT license  
 感谢 [dodgepudding/wechat-php-sdk](https://github.com/dodgepudding/wechat-php-sdk) 和 [huanghua581/laravel-wechat-sdk](https://github.com/huanghua581/laravel-wechat-sdk)
