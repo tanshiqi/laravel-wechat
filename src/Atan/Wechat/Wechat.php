@@ -136,14 +136,15 @@ class Wechat
     public $errMsg = "no access";
     public $logcallback;
 
-    public function __construct()
+    public function __construct($options = 'default')
     {
-        $this->token            = Config::get('wechat::wechat.token');
-        $this->encodingAesKey   = Config::get('wechat::wechat.encodingaeskey');
-        $this->appid            = Config::get('wechat::wechat.appid');
-        $this->appsecret        = Config::get('wechat::wechat.appsecret');
-        $this->debug            = Config::get('wechat::wechat.debug');
-        $this->logcallback      = Config::get('wechat::wechat.logcallback');
+        $opt = is_array($options)?$options:Config::get('wechat::wechat.'.$options);
+        $this->token            = isset($opt['token'])?$opt['token']:'';
+        $this->encodingAesKey   = isset($opt['encodingaeskey'])?$opt['encodingaeskey']:'';
+        $this->appid            = isset($opt['appid'])?$opt['appid']:'';
+        $this->appsecret        = isset($opt['appsecret'])?$opt['appsecret']:'';
+        $this->debug            = isset($opt['debug'])?$opt['debug']:false;
+        $this->logcallback      = isset($opt['logcallback'])?$opt['logcallback']:false;
     }
 
     /**
