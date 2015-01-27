@@ -66,7 +66,7 @@ class Wechat
     const MASS_PREVIEW_URL = '/message/mass/preview?';
     const MASS_QUERY_URL = '/message/mass/get?';
     const UPLOAD_MEDIA_URL = 'http://file.api.weixin.qq.com/cgi-bin';
-    const MEDIA_UPLOAD = '/media/upload?';
+    const MEDIA_UPLOAD_URL = '/media/upload?';
     const MEDIA_GET_URL = '/media/get?';
     const MEDIA_VIDEO_UPLOAD = '/media/uploadvideo?';
     const OAUTH_PREFIX = 'https://open.weixin.qq.com/connect/oauth2';
@@ -112,8 +112,36 @@ class Wechat
     const CARD_MOVIETICKET_UPDATEUSER     = '/card/movieticket/updateuser?';   //更新电影票(未加方法)
     const CARD_BOARDINGPASS_CHECKIN       = '/card/boardingpass/checkin?';     //飞机票-在线选座(未加方法)
     const CARD_LUCKYMONEY_UPDATE          = '/card/luckymoney/updateuserbalance?';     //更新红包金额
+    const SEMANTIC_API_URL = '/semantic/semproxy/search?'; //语义理解
+    ///数据分析接口
+    static $DATACUBE_URL_ARR = array(        //用户分析
+            'user' => array(
+                    'summary' => '/datacube/getusersummary?',       //获取用户增减数据（getusersummary）
+                    'cumulate' => '/datacube/getusercumulate?',     //获取累计用户数据（getusercumulate）
+            ),
+            'article' => array(            //图文分析
+                    'summary' => '/datacube/getarticlesummary?',        //获取图文群发每日数据（getarticlesummary）
+                    'total' => '/datacube/getarticletotal?',        //获取图文群发总数据（getarticletotal）
+                    'read' => '/datacube/getuserread?',         //获取图文统计数据（getuserread）
+                    'readhour' => '/datacube/getuserreadhour?',     //获取图文统计分时数据（getuserreadhour）
+                    'share' => '/datacube/getusershare?',           //获取图文分享转发数据（getusershare）
+                    'sharehour' => '/datacube/getusersharehour?',       //获取图文分享转发分时数据（getusersharehour）
+            ),
+            'upstreammsg' => array(        //消息分析
+                    'summary' => '/datacube/getupstreammsg?',       //获取消息发送概况数据（getupstreammsg）
+                    'hour' => '/datacube/getupstreammsghour?',  //获取消息分送分时数据（getupstreammsghour）
+                    'week' => '/datacube/getupstreammsgweek?',  //获取消息发送周数据（getupstreammsgweek）
+                    'month' => '/datacube/getupstreammsgmonth?',    //获取消息发送月数据（getupstreammsgmonth）
+                    'dist' => '/datacube/getupstreammsgdist?',  //获取消息发送分布数据（getupstreammsgdist）
+                    'distweek' => '/datacube/getupstreammsgdistweek?',  //获取消息发送分布周数据（getupstreammsgdistweek）
+                    'distmonth' => '/datacube/getupstreammsgdistmonth?',    //获取消息发送分布月数据（getupstreammsgdistmonth）
+            ),
+            'interface' => array(        //接口分析
+                    'summary' => '/datacube/getinterfacesummary?',  //获取接口分析数据（getinterfacesummary）
+                    'summaryhour' => '/datacube/getinterfacesummaryhour?',  //获取接口分析分时数据（getinterfacesummaryhour）
+            )
+    );
 
-    const SEMANTIC_API_URL= '/semantic/semproxy/search?';
 
     private $token;
     private $encodingAesKey;
@@ -1139,6 +1167,7 @@ class Wechat
      */
     public function getJsTicket($appid='',$jsapi_ticket=''){
         if (!$this->access_token && !$this->checkAuth()) return false;
+        if (!$appid) $appid = $this->appid;
         if ($jsapi_ticket) { //手动指定token，优先使用
             $this->jsapi_ticket = $jsapi_ticket;
             return $this->access_token;
@@ -1168,22 +1197,36 @@ class Wechat
 
     /**
      * 获取JsApi使用签名
-     * @param string $url 网页的URL，不包含#及其后面部分
-     * @param string $timeStamp 当前时间戳（需与JS输出的一致）
-     * @param string $nonceStr 随机串（需与JS输出的一致）
+     * @param string $url 网页的URL，自动处理#及其后面部分
+     * @param string $timestamp 当前时间戳 (为空则自动生成)
+     * @param string $noncestr 随机串 (为空则自动生成)
      * @param string $appid 用于多个appid时使用,可空
-     * @return string 返回签名字串
+     * @return array|bool 返回签名字串
      */
-    public function getJsSign($url, $timeStamp, $nonceStr, $appid=''){
-        if (!$this->jsapi_ticket && !$this->getJsTicket($appid)) return false;
+    public function getJsSign($url, $timestamp=0, $noncestr='', $appid=''){
+        if (!$this->jsapi_ticket && !$this->getJsTicket($appid) || !$url) return false;
+        if (!$timestamp)
+            $timestamp = time();
+        if (!$noncestr)
+            $noncestr = $this->generateNonceStr();
         $ret = strpos($url,'#');
         if ($ret)
             $url = substr($url,0,$ret);
         $url = trim($url);
         if (empty($url))
             return false;
-        $arrdata = array("timestamp" => $timeStamp, "noncestr" => $nonceStr, "url" => $url, "jsapi_ticket" => $this->jsapi_ticket);
-        return $this->getSignature($arrdata);
+        $arrdata = array("timestamp" => $timestamp, "noncestr" => $noncestr, "url" => $url, "jsapi_ticket" => $this->jsapi_ticket);
+        $sign = $this->getSignature($arrdata);
+        if (!$sign)
+            return false;
+        $signPackage = array(
+                "appid"     => $this->appid,
+                "noncestr"  => $noncestr,
+                "timestamp" => $timestamp,
+                "url"       => $url,
+                "signature" => $sign
+        );
+        return $signPackage;
     }
 
     /**
@@ -1410,7 +1453,7 @@ class Wechat
      */
     public function uploadMedia($data, $type){
         if (!$this->access_token && !$this->checkAuth()) return false;
-        $result = $this->http_post(self::UPLOAD_MEDIA_URL.self::MEDIA_UPLOAD.'access_token='.$this->access_token.'&type='.$type,$data,true);
+        $result = $this->http_post(self::UPLOAD_MEDIA_URL.self::MEDIA_UPLOAD_URL.'access_token='.$this->access_token.'&type='.$type,$data,true);
         if ($result)
         {
             $json = json_decode($result,true);
@@ -1700,6 +1743,36 @@ class Wechat
                 return false;
             }
             return $json['short_url'];
+        }
+        return false;
+    }
+
+    /**
+     * 获取统计数据
+     * @param string $type  数据分类(user|article|upstreammsg|interface)分别为(用户分析|图文分析|消息分析|接口分析)
+     * @param string $subtype   数据子分类，参考 DATACUBE_URL_ARR 常量定义部分 或者README.md说明文档
+     * @param string $begin_date 开始时间
+     * @param string $end_date   结束时间
+     * @return boolean|array 成功返回查询结果数组，其定义请看官方文档
+     */
+    public function getDatacube($type,$subtype,$begin_date,$end_date=''){
+        if (!$this->access_token && !$this->checkAuth()) return false;
+        if (!isset(self::$DATACUBE_URL_ARR[$type]) || !isset(self::$DATACUBE_URL_ARR[$type][$subtype]))
+            return false;
+        $data = array(
+            'begin_date'=>$begin_date,
+            'end_date'=>$end_date?$end_date:$begin_date
+        );
+        $result = $this->http_post(self::API_URL_PREFIX.self::$DATACUBE_URL_ARR[$type][$subtype].'access_token='.$this->access_token,self::json_encode($data));
+        if ($result)
+        {
+            $json = json_decode($result,true);
+            if (!$json || !empty($json['errcode'])) {
+                $this->errCode = $json['errcode'];
+                $this->errMsg = $json['errmsg'];
+                return false;
+            }
+            return isset($json['list'])?$json['list']:$json;
         }
         return false;
     }
@@ -2721,7 +2794,7 @@ class Wechat
      * 自定义 code（use_custom_code 为 true）的优惠券，在 code 被核销时，必须调用此接口。
      *
      * @param string $code 要消耗的序列号
-     * @param string $code_id 要消耗序列号所述的 card_id，创建卡券时use_custom_code 填写 true 时必填。
+     * @param string $card_id 要消耗序列号所述的 card_id，创建卡券时use_custom_code 填写 true 时必填。
      * @return boolean|array
      * {
      *  "errcode":0,
@@ -2847,13 +2920,13 @@ class Wechat
      * 为确保转赠后的安全性，微信允许自定义code的商户对已下发的code进行更改。
      * 注：为避免用户疑惑，建议仅在发生转赠行为后（发生转赠后，微信会通过事件推送的方式告知商户被转赠的卡券code）对用户的code进行更改。
      * @param string $code      卡券的 code 编码
-     * @param string $code_id   卡券 ID
+     * @param string $card_id   卡券 ID
      * @param string $new_code  新的卡券 code 编码
      * @return boolean
      */
-    public function updateCardCode($code,$code_id,$new_code) {
+    public function updateCardCode($code,$card_id,$new_code) {
         $data = array(
-            'code' => $card,
+            'code' => $code,
             'card_id' => $card_id,
             'new_code' => $new_code,
         );
@@ -2875,15 +2948,15 @@ class Wechat
      * 设置卡券失效
      * 设置卡券失效的操作不可逆
      * @param string $code 需要设置为失效的 code
-     * @param string $code 自定义 code 的卡券必填。非自定义 code 的卡券不填。
+     * @param string $card_id 自定义 code 的卡券必填。非自定义 code 的卡券不填。
      * @return boolean
      */
-    public function unavailableCardCode($code,$code_id='') {
+    public function unavailableCardCode($code,$card_id='') {
         $data = array(
             'code' => $code,
         );
-        if ($code_id)
-            $data['code_id'] = $code_id;
+        if ($card_id)
+            $data['card_id'] = $card_id;
         if (!$this->access_token && !$this->checkAuth()) return false;
         $result = $this->http_post(self::API_BASE_URL_PREFIX . self::CARD_CODE_UNAVAILABLE . 'access_token=' . $this->access_token, self::json_encode($data));
         if ($result) {
